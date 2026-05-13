@@ -211,18 +211,24 @@ export default function App() {
     }
   };
 
+  const [loadingStep, setLoadingStep] = useState<"idle" | "analyzing" | "generating">("idle");
+
   const handleGenerate = async () => {
     if (!state.content.trim()) {
       toast.error("Vui lòng nhập nội dung kịch bản.");
       return;
     }
-    if (state.selectedImageIndex === null || !state.images[state.selectedImageIndex]) {
-      toast.warning("Chưa chọn ảnh tham chiếu. Đang sử dụng ảnh mặc định (nếu có).");
+
+    const hasImage = state.selectedImageIndex !== null && !!state.images[state.selectedImageIndex];
+    if (!hasImage) {
+      toast.warning("Chưa có ảnh tham chiếu — kịch bản sẽ không mô tả nhân vật cụ thể.", { duration: 4000 });
     }
 
     setLoading(true);
+    setLoadingStep(hasImage ? "analyzing" : "generating");
     try {
       const result = await generateContent(state);
+      setLoadingStep("idle");
       await saveResult(result);
       setCurrentResult(result);
       toast.success("Tạo kịch bản thành công!");
@@ -230,17 +236,18 @@ export default function App() {
     } catch (error: any) {
       console.error(error);
       const msg = error?.message || "";
-      if (msg.includes("API Key") || msg.includes("api_key") || msg.includes("API key") || msg.includes("GEMINI") || msg.includes("Chưa có")) {
-        toast.error("⚠️ Chưa có API Key! Vào trang 'Quản lý API Keys' để nhập Gemini key của bạn.", { duration: 6000 });
-      } else if (msg.includes("quota") || msg.includes("429")) {
-        toast.error("🔴 Hết quota API Key. Hãy đổi key khác hoặc chờ reset.", { duration: 5000 });
+      if (msg.includes("quota") || msg.includes("429")) {
+        toast.error("🔴 Hết quota tất cả API Key. Thêm key dự phòng trên Vercel ENV.", { duration: 5000 });
       } else if (msg.includes("401") || msg.includes("invalid")) {
-        toast.error("🔑 API Key không hợp lệ. Kiểm tra lại key trong trang Quản lý API Keys.", { duration: 5000 });
+        toast.error("🔑 API Key không hợp lệ. Kiểm tra ENV Variables trên Vercel.", { duration: 5000 });
+      } else if (msg.includes("cấu hình") || msg.includes("Vercel")) {
+        toast.error("⚠️ Chưa cấu hình API Key trên Vercel Environment Variables.", { duration: 6000 });
       } else {
-        toast.error("Có lỗi xảy ra khi tạo kịch bản. Vui lòng thử lại.");
+        toast.error(`Lỗi: ${msg || "Không xác định. Thử lại sau."}`, { duration: 5000 });
       }
     } finally {
       setLoading(false);
+      setLoadingStep("idle");
     }
   };
 
@@ -482,7 +489,9 @@ export default function App() {
                 animate={{ opacity: 1 }}
               >
                 <Wand2 className="w-5 h-5 animate-pulse" />
-                <span>AI Đang Phân Tích...</span>
+                <span>
+                  {loadingStep === "analyzing" ? "🔍 Đang phân tích ảnh..." : "✍️ Đang tạo kịch bản..."}
+                </span>
               </motion.div>
             ) : (
               <span className="flex items-center gap-2">
