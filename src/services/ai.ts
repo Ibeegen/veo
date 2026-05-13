@@ -1,17 +1,40 @@
 import { GoogleGenAI } from "@google/genai";
 import { AppState, GeneratedResult, ScriptScene, ThumbnailVariation } from "../types";
 import { v4 as uuidv4 } from "uuid";
+import { apiKeyManager } from "../lib/api-key-manager";
 
-// Safely get API key for Vite/Vercel compatibility
-// @ts-ignore
-const mEnv = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env : {};
-const pEnv = typeof process !== 'undefined' ? process.env : {};
+// ─── LẤY API KEY ĐỘNG: ưu tiên localStorage (nhập từ UI) → ENV variable ───
+function getGeminiApiKey(): string {
+  // 1. Thử lấy từ ApiKeyManager (localStorage - key người dùng đã nhập qua UI)
+  try {
+    const keyData = apiKeyManager.getNextKey('google');
+    if (keyData && keyData.key) {
+      console.log('[AI Service] Dùng key từ localStorage:', keyData.label);
+      return keyData.key;
+    }
+  } catch (_) {
+    // Không có key trong localStorage → thử ENV
+  }
 
-const apiKey = pEnv.GEMINI_API_KEY || mEnv.VITE_GEMINI_API_KEY || "";
-if (!apiKey) {
-  console.error("GEMINI_API_KEY is not defined.");
+  // 2. Fallback: ENV variable (khi deploy Vercel / .env local)
+  // @ts-ignore
+  const mEnv = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env : {};
+  const pEnv = typeof process !== 'undefined' ? process.env : {};
+  const envKey = pEnv.GEMINI_API_KEY || mEnv.VITE_GEMINI_API_KEY || "";
+
+  if (envKey) {
+    console.log('[AI Service] Dùng key từ ENV variable');
+    return envKey;
+  }
+
+  throw new Error("Chưa có Gemini API Key. Vui lòng vào trang Quản lý API Keys để nhập key.");
 }
-const ai = new GoogleGenAI({ apiKey });
+
+// Tạo instance GoogleGenAI mới mỗi lần gọi để luôn dùng key mới nhất
+function createAiClient(): GoogleGenAI {
+  const apiKey = getGeminiApiKey();
+  return new GoogleGenAI({ apiKey });
+}
 
 interface AIResponse {
   hook: string;
@@ -28,6 +51,7 @@ Nội dung của người dùng: "${contentSnippet}"
 Trả về CHỈ một mảng JSON hợp lệ gồm 3 chuỗi string. Không thêm markdown hay văn bản nào khác ngoài JSON.`;
 
   try {
+    const ai = createAiClient();
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: prompt,
@@ -102,6 +126,7 @@ OUTPUT FORMAT (JSON ONLY):
 Ensure there are exactly ${state.sceneCount} items in the "scenes" array.
 Return valid JSON only.`;
 
+  const ai = createAiClient();
   const response = await ai.models.generateContent({
     model: "gemini-2.5-pro",
     contents: prompt,
