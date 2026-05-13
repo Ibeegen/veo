@@ -100,7 +100,7 @@ RULES FOR HOOK & HASHTAGS:
 
 RULES FOR THUMBNAIL TEXTS:
 1. Tạo 3 biến thể tiêu đề để đặt lên ảnh thumbnail.
-2. Tối đa 80 ký tự cho mỗi tiêu đề.
+2. Tối đa 50 ký tự cho mỗi tiêu đề.
 3. Ưu tiên: Ngắn gọn, viral, dễ đọc trên mobile, tạo cảm giác tò mò, phù hợp thumbnail TikTok/Reels/Shorts.
 4. Viết bằng tiếng Việt.
 
