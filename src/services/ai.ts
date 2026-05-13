@@ -46,7 +46,7 @@ interface AIResponse {
 export async function suggestScripts(contentSnippet: string): Promise<string[]> {
   if (!contentSnippet || contentSnippet.trim().split(/\s+/).length < 4) return [];
 
-  const prompt = `Dựa trên đoạn nội dung sau cho một video ngắn xây dựng thương hiệu cá nhân, hãy đề xuất 3 hướng đi/kịch bản (angles/directions) sâu sắc và hấp dẫn. Mỗi gợi ý dài khoảng 30 đến 35 từ (tối đa 35 từ) và phải được viết bằng TIẾNG VIỆT.
+  const prompt = `Dựa trên đoạn nội dung sau cho một video ngắn xây dựng thương hiệu cá nhân, hãy đề xuất 3 hướng đi/kịch bản (angles/directions) sâu sắc và hấp dẫn. Mỗi gợi ý tối đa 25 từ (KHÔNG được vượt quá 25 từ), viết bằng TIẾNG VIỆT, ngắn gọn súc tích.
 Nội dung của người dùng: "${contentSnippet}"
 Trả về CHỈ một mảng JSON hợp lệ gồm 3 chuỗi string. Không thêm markdown hay văn bản nào khác ngoài JSON.`;
 
