@@ -115,33 +115,14 @@ export default function App() {
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [currentResult, setCurrentResult] = useState<GeneratedResult | null>(null);
-  const [hasApiKey, setHasApiKey] = useState<boolean>(true);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const suggestionTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     loadHistory();
-    checkApiKey();
-    // Fix 2: Load ảnh thư viện từ localStorage
     loadImageLibrary();
   }, []);
-
-  const checkApiKey = () => {
-    try {
-      const stored = localStorage.getItem("api_key_manager_v1");
-      if (stored) {
-        const decoded = JSON.parse(decodeURIComponent(escape(atob(stored))));
-        const googleKeys = decoded?.google?.keys || [];
-        const activeKeys = googleKeys.filter((k: any) => k.active && k.key);
-        setHasApiKey(activeKeys.length > 0);
-      } else {
-        setHasApiKey(false);
-      }
-    } catch {
-      setHasApiKey(false);
-    }
-  };
 
   // Fix 2: Load & Save ảnh thư viện
   const loadImageLibrary = async () => {
@@ -294,6 +275,7 @@ export default function App() {
             <h1 className="font-bold text-lg tracking-tight text-white">ClipBrand AI</h1>
           </div>
           <div className="flex items-center gap-2">
+            <p className="text-sm text-brand-bg-sub hidden sm:block font-medium">Chuyên gia video ngắn tự động</p>
             <button
               onClick={handleNewScript}
               title="Tạo kịch bản mới"
@@ -301,15 +283,6 @@ export default function App() {
             >
               <RefreshCw className="w-3.5 h-3.5" /> Tạo mới
             </button>
-            <a
-              href="/api-settings.html"
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Quản lý API Keys"
-              className="flex items-center gap-1.5 bg-white/15 hover:bg-white/30 text-white text-xs font-semibold px-3 py-1.5 rounded-lg border border-white/30 transition-all"
-            >
-              🔑 API Key
-            </a>
           </div>
         </div>
       </header>
@@ -317,19 +290,6 @@ export default function App() {
       <main className="max-w-[430px] md:max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-8 mb-20 md:mb-0">
         
         {/* ⚠️ Banner cảnh báo khi chưa có API key */}
-        {!hasApiKey && (
-          <div className="lg:col-span-12 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 flex items-center gap-3 text-amber-800 -mb-2">
-            <span className="text-xl">⚠️</span>
-            <div className="flex-1 text-sm font-medium">
-              Chưa có <strong>Gemini API Key</strong>! Nhập key để có thể tạo kịch bản.
-            </div>
-            <a href="/api-settings.html" target="_blank" rel="noopener noreferrer"
-              className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs px-3 py-2 rounded-lg transition-colors whitespace-nowrap shrink-0">
-              🔑 Nhập key ngay
-            </a>
-          </div>
-        )}
-
         {/* Left Column: Inputs */}
         <div className="lg:col-span-5 space-y-8">
           
