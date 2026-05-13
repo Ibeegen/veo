@@ -46,29 +46,23 @@ interface AIResponse {
 export async function suggestScripts(contentSnippet: string): Promise<string[]> {
   if (!contentSnippet || contentSnippet.trim().split(/\s+/).length < 4) return [];
 
-  const prompt = `Dựa trên đoạn nội dung sau cho một video ngắn xây dựng thương hiệu cá nhân, hãy đề xuất 3 hướng đi/kịch bản (angles/directions) sâu sắc và hấp dẫn. Mỗi gợi ý tối đa 25 từ (KHÔNG được vượt quá 25 từ), viết bằng TIẾNG VIỆT, ngắn gọn súc tích.
-Nội dung của người dùng: "${contentSnippet}"
-Trả về CHỈ một mảng JSON hợp lệ gồm 3 chuỗi string. Không thêm markdown hay văn bản nào khác ngoài JSON.`;
+  const prompt = `Dựa trên đoạn nội dung sau, hãy đề xuất 3 tiêu đề/góc độ (title angles) ngắn gọn, viral, dùng làm nội dung chính cho video ngắn TikTok/Reels về xây dựng thương hiệu cá nhân.
+Yêu cầu: Mỗi tiêu đề tối đa 20 từ, viết bằng TIẾNG VIỆT, ngắn gọn súc tích, kích thích tò mò, KHÔNG được vượt quá 20 từ.
+Nội dung: "${contentSnippet}"
+Trả về CHỈ một mảng JSON hợp lệ gồm 3 chuỗi string. Không thêm markdown hay văn bản nào khác.`;
 
-  try {
-    const ai = createAiClient();
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-      },
-    });
+  const ai = createAiClient();
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: prompt,
+    config: { responseMimeType: "application/json" },
+  });
 
-    if (response.text) {
-      const data = JSON.parse(response.text);
-      if (Array.isArray(data)) return data.slice(0, 3);
-    }
-    return [];
-  } catch (error) {
-    console.error("AI Suggestion error:", error);
-    return [];
+  if (response.text) {
+    const data = JSON.parse(response.text);
+    if (Array.isArray(data)) return data.slice(0, 3);
   }
+  return [];
 }
 
 export async function generateContent(state: AppState): Promise<GeneratedResult> {
