@@ -111,13 +111,32 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [currentResult, setCurrentResult] = useState<GeneratedResult | null>(null);
+  const [hasApiKey, setHasApiKey] = useState<boolean>(true); // kiểm tra key
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const suggestionTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     loadHistory();
+    // Kiểm tra xem đã có Gemini API key chưa
+    checkApiKey();
   }, []);
+
+  const checkApiKey = () => {
+    try {
+      const stored = localStorage.getItem("api_key_manager_v1");
+      if (stored) {
+        const decoded = JSON.parse(decodeURIComponent(escape(atob(stored))));
+        const googleKeys = decoded?.google?.keys || [];
+        const activeKeys = googleKeys.filter((k: any) => k.active && k.key);
+        setHasApiKey(activeKeys.length > 0);
+      } else {
+        setHasApiKey(false);
+      }
+    } catch {
+      setHasApiKey(false);
+    }
+  };
 
   const loadHistory = async () => {
     const hist = await getHistory();
@@ -187,9 +206,18 @@ export default function App() {
       setCurrentResult(result);
       toast.success("Tạo kịch bản thành công!");
       await loadHistory();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error("Có lỗi xảy ra khi tạo kịch bản. Vui lòng thử lại.");
+      const msg = error?.message || "";
+      if (msg.includes("API Key") || msg.includes("api_key") || msg.includes("API key") || msg.includes("GEMINI") || msg.includes("Chưa có")) {
+        toast.error("⚠️ Chưa có API Key! Vào trang 'Quản lý API Keys' để nhập Gemini key của bạn.", { duration: 6000 });
+      } else if (msg.includes("quota") || msg.includes("429")) {
+        toast.error("🔴 Hết quota API Key. Hãy đổi key khác hoặc chờ reset.", { duration: 5000 });
+      } else if (msg.includes("401") || msg.includes("invalid")) {
+        toast.error("🔑 API Key không hợp lệ. Kiểm tra lại key trong trang Quản lý API Keys.", { duration: 5000 });
+      } else {
+        toast.error("Có lỗi xảy ra khi tạo kịch bản. Vui lòng thử lại.");
+      }
     } finally {
       setLoading(false);
     }
@@ -225,12 +253,37 @@ export default function App() {
             </div>
             <h1 className="font-bold text-lg tracking-tight text-white">ClipBrand AI</h1>
           </div>
-          <p className="text-sm text-brand-bg-sub hidden sm:block font-medium">Chuyên gia video ngắn tự động</p>
+          <div className="flex items-center gap-3">
+            <p className="text-sm text-brand-bg-sub hidden sm:block font-medium">Chuyên gia video ngắn tự động</p>
+            <a
+              href="/api-settings.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Quản lý API Keys"
+              className="flex items-center gap-1.5 bg-white/15 hover:bg-white/30 text-white text-xs font-semibold px-3 py-1.5 rounded-lg border border-white/30 transition-all"
+            >
+              🔑 API Key
+            </a>
+          </div>
         </div>
       </header>
 
       <main className="max-w-[430px] md:max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-8 mb-20 md:mb-0">
         
+        {/* ⚠️ Banner cảnh báo khi chưa có API key */}
+        {!hasApiKey && (
+          <div className="lg:col-span-12 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 flex items-center gap-3 text-amber-800 -mb-2">
+            <span className="text-xl">⚠️</span>
+            <div className="flex-1 text-sm font-medium">
+              Chưa có <strong>Gemini API Key</strong>! Nhập key để có thể tạo kịch bản.
+            </div>
+            <a href="/api-settings.html" target="_blank" rel="noopener noreferrer"
+              className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs px-3 py-2 rounded-lg transition-colors whitespace-nowrap shrink-0">
+              🔑 Nhập key ngay
+            </a>
+          </div>
+        )}
+
         {/* Left Column: Inputs */}
         <div className="lg:col-span-5 space-y-8">
           
