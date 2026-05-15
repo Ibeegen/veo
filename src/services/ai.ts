@@ -10,8 +10,13 @@ import { v4 as uuidv4 } from "uuid";
 // @ts-ignore
 const E = typeof import.meta !== "undefined" && import.meta.env ? import.meta.env : {};
 
-const GEMINI_KEYS  = [E.VITE_GEMINI_API_KEY, E.VITE_GEMINI_API_KEY_2]
-  .filter((k): k is string => typeof k === "string" && k.startsWith("AIza"));
+const GEMINI_KEYS  = [
+  E.VITE_GEMINI_API_KEY,
+  E.VITE_GEMINI_API_KEY_2,
+  E.VITE_GEMINI_API_KEY_3,
+  E.VITE_GEMINI_API_KEY_4,
+  E.VITE_GEMINI_API_KEY_5,
+].filter((k): k is string => typeof k === "string" && k.startsWith("AIza"));
 const DEEPSEEK_KEY = E.VITE_DEEPSEEK_API_KEY  as string | undefined;
 const OPENAI_KEY   = E.VITE_OPENAI_API_KEY    as string | undefined;
 
@@ -131,34 +136,10 @@ async function callOpenAIVision(imageDataUrl: string, prompt: string): Promise<s
 
 // ─── BƯỚC 1: PHÂN TÍCH ẢNH THAM CHIẾU ───────────────────────────────────────
 /**
- * Gọi Vercel serverless /api/analyze-image để phân tích ảnh server-side.
- * Dùng key GOOGLE_API_KEY_x (server-side) thay vì VITE_ (client-side, không set trên Vercel).
+ * Gemini/OpenAI vision phân tích ảnh → trả về JSON mô tả chi tiết
+ * Dùng cho: nhân vật, trang phục, bối cảnh, màu sắc, phong cách, cảm xúc, đạo cụ, thương hiệu
  */
 async function analyzeReferenceImage(imageDataUrl: string): Promise<ImageAnalysis> {
-  const isLocal =
-    typeof window !== "undefined" &&
-    (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-
-  // ── Chế độ production: gọi qua Vercel serverless ──
-  if (!isLocal) {
-    try {
-      const res = await fetch("/api/analyze-image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageDataUrl }),
-      });
-      const data = await res.json();
-      if (data.success && data.analysis) {
-        console.log("[AI] Phân tích ảnh qua /api/analyze-image thành công");
-        return data.analysis as ImageAnalysis;
-      }
-      console.error("[AI] /api/analyze-image lỗi:", data.error);
-    } catch (err) {
-      console.error("[AI] Fetch /api/analyze-image thất bại:", err);
-    }
-  }
-
-  // ── Chế độ local dev: gọi trực tiếp Gemini/OpenAI từ client ──
   const prompt = `Phân tích chi tiết hình ảnh này để dùng làm ảnh tham chiếu cho video ngắn TikTok/Reels.
 Trả về JSON với cấu trúc sau (không thêm text ngoài JSON):
 {
@@ -175,6 +156,7 @@ Trả về JSON với cấu trúc sau (không thêm text ngoài JSON):
   "videoDirections": "3 gợi ý góc quay/hành động cho video dựa trên phong cách ảnh này"
 }`;
 
+  // Thử Gemini vision trước
   if (GEMINI_KEYS.length > 0) {
     try {
       const text = await callGeminiVision("gemini-2.5-flash", imageDataUrl, prompt);
@@ -188,6 +170,7 @@ Trả về JSON với cấu trúc sau (không thêm text ngoài JSON):
     }
   }
 
+  // Fallback: OpenAI vision (gpt-4o-mini có vision)
   if (OPENAI_KEY) {
     try {
       const text = await callOpenAIVision(imageDataUrl, prompt);
@@ -197,7 +180,7 @@ Trả về JSON với cấu trúc sau (không thêm text ngoài JSON):
     }
   }
 
-  // Không có vision provider nào hoạt động
+  // Không có vision → trả về placeholder để không crash
   console.warn("[AI] Không có vision provider → bỏ qua phân tích ảnh");
   return {
     character: "Nhân vật trong ảnh tham chiếu",
@@ -244,7 +227,7 @@ async function callAIText(model: string, prompt: string): Promise<string> {
       return await callOpenAICompat(
         "https://api.deepseek.com/chat/completions",
         DEEPSEEK_KEY,
-        "deepseek-chat",
+        "deepseek-v4-flash",
         [{ role: "user", content: prompt }]
       );
     } catch (err) {
@@ -397,7 +380,7 @@ OUTPUT FORMAT — CHỈ TRẢ VỀ JSON HỢP LỆ:
 QUAN TRỌNG: Phải có đúng ${state.sceneCount} phần tử trong mảng "scenes". Chỉ trả JSON, không thêm bất kỳ text nào khác.`;
 
   // ── Gọi AI sinh kịch bản ──
-  const text = await callAIText("gemini-2.5-pro", prompt);
+  const text = await callAIText("gemini-2.5-flash", prompt);
   if (!text) throw new Error("AI không trả về kết quả. Vui lòng thử lại.");
 
   const data = JSON.parse(text);
